@@ -7,9 +7,11 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <iostream>
 
 #define MAX_INT_LENGTH 10
 #define TYPE_LEN 10
+#define MAX_BUFFER_LENGTH 3000
 
 char *header = "HTTP/1.1 200 OK\nContent-Type: %s\nContent-Length: %u\n\n";
 char *type_str = "text/plain";
@@ -17,6 +19,62 @@ char *type_str = "text/plain";
 namespace Http {
 
 enum ContentType {TEXT};
+
+enum Method {GET};
+
+class HttpRequest {
+
+
+    public:
+        enum ReadStatus {SUCCESS, FAIL};
+
+        ReadStatus accept( int socket ) {
+            char *buffer = new char[MAX_BUFFER_LENGTH];
+            this->request_length = read(socket, buffer, MAX_BUFFER_LENGTH);
+            this->request = std::string(buffer);
+            return readRequestData();
+        }
+
+        const std::string &toString() const {
+            return this->request;
+        }
+
+        const Method &getMethod() const {
+            return this->method;
+        }
+
+        const std::string &getLoc() const {
+            return this->loc;
+        }
+
+    friend std::ostream& operator<<(std::ostream& os, const HttpRequest& req);
+
+    private:
+        int request_length;
+        Method method;
+        std::string loc;
+        std::string request;
+
+        ReadStatus readRequestData() {
+            size_t pos = this->request.find(' ');
+            if (pos == std::string::npos) {
+                return FAIL;
+            }
+            std::string m = this->request.substr(0, pos);
+
+            if (m == "GET") {
+                method = GET;
+            } else {
+                return FAIL;
+            }
+
+            size_t next_pos = this->request.find(' ', pos+1);
+            if (next_pos == std::string::npos) {
+                return FAIL;
+            }
+            loc = this->request.substr(pos+1, next_pos - (pos+1));
+        }
+};
 
 class HttpResponse {
     public:
@@ -53,4 +111,10 @@ class HttpResponse {
         size_t message_length;
 };
 
+}
+
+
+std::ostream& operator<<(std::ostream& os, Http::HttpRequest& req) {
+    os << req.toString();
+    return os;
 }

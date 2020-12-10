@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <string.h>
-#include "HttpResponse.h"
+#include "http.h"
 
 #define MAX_RESP_LENGTH 10000
 
@@ -18,6 +18,10 @@ char *content = "Hello! Welcome to Alex's HTTP server. It is very flimsy, please
 #define PORT 8080
 int main(int argc, char const *argv[])
 {
+    Http::HttpResponse resp(MAX_RESP_LENGTH);
+    resp.setContent(content, strlen(content));
+
+
     int server_fd, new_socket; long valread;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
@@ -54,13 +58,19 @@ int main(int argc, char const *argv[])
             perror("In accept");
             exit(EXIT_FAILURE);
         }
-        
-        char buffer[30000] = {0};
-        valread = read( new_socket , buffer, 30000);
-        printf("%s\n",buffer );
 
-        Http::HttpResponse resp(MAX_RESP_LENGTH);
-        resp.setContent(content, strlen(content));
+        Http::HttpRequest req;
+        switch (req.accept(new_socket)) {
+            case Http::HttpRequest::ReadStatus::SUCCESS:
+                std::cout << req.getMethod() << "\n";
+                std::cout << req.getLoc() << "\n";
+                break;
+            default:
+                std::cout << "Failed to read..." << "\n";
+        }
+        std::cout << "\n\n";
+        std::cout << req << "\n"; 
+
         resp.send(new_socket);
 
         printf("------------------Hello message sent-------------------");
